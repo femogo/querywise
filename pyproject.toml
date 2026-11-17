@@ -5,6 +5,8 @@ description = "Text-to-SQL LangGraph agent with defense-in-depth and read-only M
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "mcp>=1.6.0",
+    "psycopg[binary]>=3.2.0",
     "pydantic>=2.14.3",
     "pydantic-settings>=2.16.3",
     "python-dotenv>=1.2.4",

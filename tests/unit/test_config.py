@@ -15,13 +15,9 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.postgres_db == "querywise"
     assert settings.sql_max_rows == 100
     assert (
-        settings.readonly_dsn
-        == "postgresql://querywise_ro:change_me_ro@localhost:5432/querywise"
+        settings.readonly_dsn == "postgresql://querywise_ro:change_me_ro@localhost:5432/querywise"
     )
-    assert (
-        settings.admin_dsn
-        == "postgresql://postgres:change_me_admin@localhost:5432/querywise"
-    )
+    assert settings.admin_dsn == "postgresql://postgres:change_me_admin@localhost:5432/querywise"
 
 
 def test_settings_rejects_invalid_guardrails() -> None:
