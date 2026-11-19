@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import json
 import re
 from datetime import date, datetime
@@ -8,6 +9,7 @@ from typing import Any
 
 import psycopg
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from psycopg import sql as pg_sql
 from psycopg.rows import dict_row
 
@@ -22,6 +24,25 @@ from querywise.security.sql_guardrail import (
 mcp = MCPServer("querywise-readonly-postgres")
 
 _IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def _tool(fn: Any) -> Any:
+    """Registra fn como herramienta MCP y devuelve al cliente el motivo de los errores previstos.
+
+    Desde mcp 2.x, una excepcion que no sea ToolError llega al cliente solo como
+    "Error executing tool <nombre>", sin el texto del guardrail o de PostgreSQL que
+    necesita el bucle de autocorreccion. La funcion original queda intacta para los tests.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except (ValueError, psycopg.Error) as exc:
+            raise ToolError(str(exc)) from exc
+
+    mcp.add_tool(wrapper)
+    return fn
 
 
 def _serialize_value(value: Any) -> Any:
@@ -79,7 +100,7 @@ def _check_explain_cost(
     return total_cost
 
 
-@mcp.tool()
+@_tool
 def list_tables() -> str:
     """Lista las tablas de negocio visibles para el rol de solo lectura en el esquema public."""
     query = """
@@ -102,7 +123,7 @@ def list_tables() -> str:
     return json.dumps({"tables": tables}, ensure_ascii=False)
 
 
-@mcp.tool()
+@_tool
 def describe_table(table_name: str) -> str:
     """Devuelve columnas, tipos de datos y nulabilidad de una tabla permitida."""
     safe_table = _validate_identifier(table_name)
@@ -126,7 +147,7 @@ def describe_table(table_name: str) -> str:
     return json.dumps({"table": safe_table, "columns": columns}, ensure_ascii=False)
 
 
-@mcp.tool()
+@_tool
 def sample_rows(table_name: str, limit: int = 5) -> str:
     """Devuelve una muestra acotada de filas (entre 1 y 10) excluyendo columnas PII."""
     safe_table = _validate_identifier(table_name)
@@ -160,7 +181,7 @@ def sample_rows(table_name: str, limit: int = 5) -> str:
     )
 
 
-@mcp.tool()
+@_tool
 def run_query(sql: str) -> str:
     """Valida el AST, verifica el coste EXPLAIN y ejecuta una consulta SELECT segura."""
     settings = get_settings()

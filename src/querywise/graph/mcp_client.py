@@ -35,7 +35,9 @@ def _extract_tool_payload(result: Any) -> dict[str, Any]:
             return parsed
         return {"ok": True, "data": parsed}
     except json.JSONDecodeError:
-        return {"ok": not bool(getattr(result, "isError", False)), "raw": raw}
+        # mcp 2.x expone is_error; versiones anteriores, isError
+        is_error = getattr(result, "is_error", getattr(result, "isError", False))
+        return {"ok": not bool(is_error), "raw": raw}
 
 
 class QueryWiseMCPClient:
