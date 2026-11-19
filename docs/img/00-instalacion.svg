@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 821 448" width="821" role="img" aria-label="uv run pytest -q">
+<rect width="821" height="448" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M0 34h821" stroke="#30363d"/>
+<circle cx="20" cy="17" r="6" fill="#ff5f57"/><circle cx="40" cy="17" r="6" fill="#febc2e"/><circle cx="60" cy="17" r="6" fill="#28c840"/>
+<text x="410.5" y="22" text-anchor="middle" fill="#8b949e" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">uv run pytest -q</text>
+<g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace" font-size="13" xml:space="preserve">
+<text x="18" y="52" fill="#8b949e"># 1 · Modelo local</text>
+<text x="18" y="71" fill="#7ee787" font-weight="600">$ ollama pull qwen2.5-coder:7b</text>
+<text x="18" y="90" fill="#e6edf3">pulling 60e05f210007: 100% ▕██████████████████▏ 4.7 GB</text>
+<text x="18" y="109" fill="#e6edf3">[...]</text>
+<text x="18" y="128" fill="#e6edf3">success</text>
+<text x="18" y="147" fill="#8b949e"># 2 · Dependencias de Python</text>
+<text x="18" y="166" fill="#7ee787" font-weight="600">$ uv sync</text>
+<text x="18" y="185" fill="#e6edf3">Using CPython 3.12.3 interpreter at: /usr/bin/python3.12</text>
+<text x="18" y="204" fill="#e6edf3">Creating virtual environment at: .venv</text>
+<text x="18" y="223" fill="#e6edf3">Resolved 74 packages in 0.62ms</text>
+<text x="18" y="242" fill="#e6edf3">[...]</text>
+<text x="18" y="261" fill="#e6edf3">Installed 70 packages in 22ms</text>
+<text x="18" y="280" fill="#8b949e"># 3 · Datos de ejemplo</text>
+<text x="18" y="299" fill="#7ee787" font-weight="600">$ uv run python scripts/seed_db.py</text>
+<text x="18" y="318" fill="#e6edf3">Base de datos poblada de forma determinista: {'categories': 5, 'products': 10, 'customers': 30,</text>
+<text x="18" y="337" fill="#e6edf3">  'orders': 120, 'order_items': 231, 'support_tickets': 4}</text>
+<text x="18" y="356" fill="#8b949e"># 4 · Tests</text>
+<text x="18" y="375" fill="#7ee787" font-weight="600">$ uv run pytest -q</text>
+<text x="18" y="394" fill="#e6edf3">..........................................                               [100%]</text>
+<text x="18" y="413" fill="#e6edf3">42 passed in 2.72s</text>
+</g></svg>

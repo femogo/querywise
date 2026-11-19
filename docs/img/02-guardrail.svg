@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 821 372" width="821" role="img" aria-label="uv run python - &lt;&lt;'EOF'">
+<rect width="821" height="372" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M0 34h821" stroke="#30363d"/>
+<circle cx="20" cy="17" r="6" fill="#ff5f57"/><circle cx="40" cy="17" r="6" fill="#febc2e"/><circle cx="60" cy="17" r="6" fill="#28c840"/>
+<text x="410.5" y="22" text-anchor="middle" fill="#8b949e" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">uv run python - &lt;&lt;'EOF'</text>
+<g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace" font-size="13" xml:space="preserve">
+<text x="18" y="52" fill="#7ee787" font-weight="600">$ uv run python - &lt;&lt;'EOF' [...] EOF</text>
+<text x="18" y="71" fill="#e6edf3">OK     SELECT status, COUNT(*) FROM orders GROUP BY status</text>
+<text x="18" y="90" fill="#e6edf3">    -&gt; SELECT status, COUNT(*) FROM orders GROUP BY status LIMIT 100</text>
+<text x="18" y="109" fill="#e6edf3">OK     SELECT name FROM products LIMIT 5000</text>
+<text x="18" y="128" fill="#e6edf3">    -&gt; SELECT name FROM products LIMIT 100</text>
+<text x="18" y="147" fill="#e6edf3">BLOCK  SELECT * FROM customers</text>
+<text x="18" y="166" fill="#e6edf3">    -&gt; Wildcard '*' is forbidden when querying tables with PII columns (customers). Select explicit</text>
+<text x="18" y="185" fill="#e6edf3">      safe columns.</text>
+<text x="18" y="204" fill="#e6edf3">BLOCK  SELECT full_name, tax_id FROM customers</text>
+<text x="18" y="223" fill="#e6edf3">    -&gt; Access to sensitive PII column 'tax_id' is forbidden.</text>
+<text x="18" y="242" fill="#e6edf3">BLOCK  SELECT * FROM pg_catalog.pg_shadow</text>
+<text x="18" y="261" fill="#e6edf3">    -&gt; Access to system schema 'pg_catalog' is forbidden.</text>
+<text x="18" y="280" fill="#e6edf3">BLOCK  SELECT 1; DROP TABLE orders</text>
+<text x="18" y="299" fill="#e6edf3">    -&gt; Exactly one SQL statement is required; got 2.</text>
+<text x="18" y="318" fill="#e6edf3">BLOCK  UPDATE orders SET status = 'refunded'</text>
+<text x="18" y="337" fill="#e6edf3">    -&gt; Only SELECT statements are allowed; got Update.</text>
+</g></svg>

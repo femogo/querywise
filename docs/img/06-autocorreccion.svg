@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 821 505" width="821" role="img" aria-label="curl -s localhost:8000/query">
+<rect width="821" height="505" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M0 34h821" stroke="#30363d"/>
+<circle cx="20" cy="17" r="6" fill="#ff5f57"/><circle cx="40" cy="17" r="6" fill="#febc2e"/><circle cx="60" cy="17" r="6" fill="#28c840"/>
+<text x="410.5" y="22" text-anchor="middle" fill="#8b949e" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">curl -s localhost:8000/query</text>
+<g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace" font-size="13" xml:space="preserve">
+<text x="18" y="52" fill="#7ee787" font-weight="600">$ curl -s localhost:8000/query -H 'Content-Type: application/json' -d '{"question": "¿Qué productos</text>
+<text x="18" y="71" fill="#7ee787" font-weight="600">  se venden mejor en Alemania que en España?"}' | jq '{status, retry_count, sql_history,</text>
+<text x="18" y="90" fill="#7ee787" font-weight="600">  final_answer, latency_ms}'</text>
+<text x="18" y="109" fill="#e6edf3">{</text>
+<text x="18" y="128" fill="#e6edf3">  "status": "success",</text>
+<text x="18" y="147" fill="#e6edf3">  "retry_count": 1,</text>
+<text x="18" y="166" fill="#e6edf3">  "sql_history": [</text>
+<text x="18" y="185" fill="#e6edf3">    "SELECT p.sku, p.name AS product_name, SUM(CASE WHEN o.country = 'Germany' THEN oi.quantity ELSE</text>
+<text x="18" y="204" fill="#e6edf3">      0 END) AS units_sold_germany, SUM(CASE WHEN o.country = 'Spain' THEN oi.quantity ELSE 0 END)</text>
+<text x="18" y="223" fill="#e6edf3">      AS units_sold_spain FROM products p JOIN order_items oi ON oi.product_id = p.product_id JOIN</text>
+<text x="18" y="242" fill="#e6edf3">      orders o ON o.order_id = oi.order_id WHERE o.status NOT IN ('cancelled', 'refunded') GROUP BY</text>
+<text x="18" y="261" fill="#e6edf3">      p.product_id, p.sku, p.name ORDER BY units_sold_germany DESC, units_sold_spain DESC",</text>
+<text x="18" y="280" fill="#e6edf3">    "SELECT p.sku, p.name AS product_name, SUM(CASE WHEN c.country = 'Germany' THEN oi.quantity ELSE</text>
+<text x="18" y="299" fill="#e6edf3">      0 END) AS units_sold_germany, SUM(CASE WHEN c.country = 'Spain' THEN oi.quantity ELSE 0 END)</text>
+<text x="18" y="318" fill="#e6edf3">      AS units_sold_spain FROM products p JOIN order_items oi ON oi.product_id = p.product_id JOIN</text>
+<text x="18" y="337" fill="#e6edf3">      orders o ON o.order_id = oi.order_id JOIN customers c ON c.customer_id = o.customer_id WHERE</text>
+<text x="18" y="356" fill="#e6edf3">      o.status NOT IN ('cancelled', 'refunded') GROUP BY p.product_id, p.sku, p.name ORDER BY</text>
+<text x="18" y="375" fill="#e6edf3">      units_sold_germany DESC, units_sold_spain DESC"</text>
+<text x="18" y="394" fill="#e6edf3">  ],</text>
+<text x="18" y="413" fill="#e6edf3">  "final_answer": "Los productos que se venden mejor en Alemania son:\n1. DevStation Pro 16\n2.</text>
+<text x="18" y="432" fill="#e6edf3">    StudioANC Wireless\n3. ProBook Ultra 14\n4. ClearMic USB Pod\n5. TactilePro TKL",</text>
+<text x="18" y="451" fill="#e6edf3">  "latency_ms": 13905.55</text>
+<text x="18" y="470" fill="#e6edf3">}</text>
+</g></svg>
