@@ -13,7 +13,7 @@ from querywise.graph.state import (
     FinalAnswerResponse,
     SQLGenerationResponse,
 )
-from querywise.semantic.business_glossary import render_business_glossary
+from querywise.semantic import build_semantic_context
 
 NON_RETRYABLE_TOKENS = ("pii", "forbidden", "not allowed", "system catalog", "read-only")
 
@@ -45,7 +45,6 @@ def _create_default_llm() -> ChatOllama:
         temperature=0.0,
     )
 
-
 def build_text_to_sql_graph(
     llm: BaseChatModel | None = None,
     mcp_client: QueryWiseMCPClient | None = None,
@@ -68,12 +67,12 @@ def build_text_to_sql_graph(
         }
 
     async def generate_sql(state: AgentState) -> dict[str, Any]:
-        glossary = render_business_glossary()
+        semantic_context = build_semantic_context(state["question"])
         system_prompt = (
             "You are QueryWise, an expert PostgreSQL data analyst.\n"
             "Translate the user's business question into ONE safe, read-only PostgreSQL SELECT "
             "query using ONLY the tables and columns present in the provided schema.\n\n"
-            f"{glossary}\n\n"
+            f"{semantic_context}\n\n"
             "### DATABASE SCHEMA\n"
             f"{state['schema_context']}"
         )
@@ -83,7 +82,7 @@ def build_text_to_sql_graph(
             user_parts.extend(
                 [
                     "",
-                    "### PREVIOUS ATTEMPT FAILED Ã¢â‚¬â€ FIX REQUIRED",
+                    "### PREVIOUS ATTEMPT FAILED - FIX REQUIRED",
                     f"Failed SQL:\n{state['generated_sql']}",
                     f"Exact error returned by guardrail/database:\n{state['error']}",
                     "Rewrite the SQL query to fix this exact error while answering the question.",
@@ -165,8 +164,8 @@ def build_text_to_sql_graph(
         last_error = state.get("error") or "Unknown error"
         return {
             "final_answer": (
-                "No pude ejecutar una consulta SQL vÃƒÂ¡lida y segura para responder a tu pregunta "
-                f"tras {state.get('retry_count', 0)} intentos. ÃƒÅ¡ltimo motivo: {last_error}"
+                "No pude ejecutar una consulta SQL válida y segura para responder a tu pregunta "
+                f"tras {state.get('retry_count', 0)} intentos. Último motivo: {last_error}"
             ),
             "assumptions": [],
             "status": "failed",

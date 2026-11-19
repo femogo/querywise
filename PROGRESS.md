@@ -23,3 +23,9 @@
 
 ## Proximo paso: Hito 4 - Capa semantica (catalogo de metricas y ejemplos verificados)
 - Expandir `src/querywise/semantic/` con un catalogo estructurado de metricas de negocio y recuperacion por similitud de ejemplos SQL verificados (few-shot) para consultas ambiguas o con multiples joins.
+
+## Hito 4 — Capa semántica (catálogo de métricas y recuperación de ejemplos verificados) [COMPLETADO]
+- **Catálogo estructurado de métricas (`src/querywise/semantic/metrics_catalog.py`)**: 7 métricas canónicas modeladas con Pydantic (`net_revenue`, `gross_revenue`, `average_order_value`, `gross_margin`, `valid_order_count`, `cancellation_refund_rate`, `active_customers`), con sinónimos bilingües, fórmulas SQL oficiales, tablas requeridas, filtros obligatorios y recuperador léxico insensible a tildes.
+- **Banco de consultas SQL verificadas (`src/querywise/semantic/verified_queries.py`)**: 8 patrones SQL auditados (*few-shot*) libres de columnas PII y recuperador por similitud coseno TF (`retrieve_verified_queries`).
+- **Integración dinámica en LangGraph (`src/querywise/semantic/__init__.py` y `src/querywise/graph/workflow.py`)**: `build_semantic_context()` ensambla reglas obligatorias, frontera anti-inyección, métricas relevantes y ejemplos verificados para cada pregunta en el nodo `generate_sql`.
+- **Calidad y validación en vivo**: 36 tests en verde (`tests/unit/test_semantic_layer.py` incluido), `ruff check .` limpio y ejecución end-to-end contra Ollama (`gemma4:e2b`) + MCP + PostgreSQL con `retry_count: 0` en consultas multi-join de margen bruto por categoría.
