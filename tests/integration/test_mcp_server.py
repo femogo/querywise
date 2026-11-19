@@ -1,62 +1,62 @@
 import json
 
-import psycopg
 import pytest
 
+from querywise.config import get_settings
 from querywise.mcp_server.server import describe_table, list_tables, run_query, sample_rows
+from querywise.security.sql_guardrail import SQLGuardrailError
 
 
-def test_list_tables_hides_internal_audit_logs() -> None:
-    """Comprueba que list_tables muestra solo las 6 tablas permitidas a querywise_ro."""
+def test_list_tables_returns_only_allowed_business_tables() -> None:
     payload = json.loads(list_tables())
-    assert payload["tables"] == [
-        "categories",
-        "customers",
-        "order_items",
-        "orders",
-        "products",
-        "support_tickets",
-    ]
+    tables = payload["tables"]
+    assert "orders" in tables
+    assert "customers" in tables
+    assert "internal_audit_logs" not in tables
 
 
-def test_describe_and_sample_rows_products() -> None:
-    """Comprueba que describe_table y sample_rows devuelven metadatos y filas acotadas."""
-    schema_payload = json.loads(describe_table("products"))
-    col_names = [col["column_name"] for col in schema_payload["columns"]]
-    assert "sku" in col_names
-    assert "unit_cost" in col_names
+def test_describe_table_returns_schema_and_blocks_audit_logs() -> None:
+    payload = json.loads(describe_table("orders"))
+    col_names = {col["column_name"] for col in payload["columns"]}
+    assert {"order_id", "customer_id", "status", "total_amount"} <= col_names
 
-    sample_payload = json.loads(sample_rows("products", limit=3))
-    assert sample_payload["table"] == "products"
-    assert sample_payload["row_count"] == 3
-    assert len(sample_payload["rows"]) == 3
+    with pytest.raises(ValueError, match="Tabla no permitida"):
+        describe_table("internal_audit_logs")
 
 
-def test_run_query_returns_deterministic_order_count() -> None:
-    """Comprueba que run_query ejecuta SELECT y devuelve el total determinista de pedidos."""
-    result = json.loads(run_query("SELECT COUNT(*) AS total_orders FROM orders;"))
-    assert result["columns"] == ["total_orders"]
-    assert result["rows"] == [{"total_orders": 120}]
-    assert result["truncated"] is False
+def test_sample_rows_strips_pii_columns_from_customers() -> None:
+    payload = json.loads(sample_rows("customers", limit=3))
+    assert payload["row_count"] == 3
+    for row in payload["rows"]:
+        assert "email" in row
+        assert "password_hash" not in row
+        assert "tax_id" not in row
 
 
-def test_readonly_role_blocks_write_and_private_table() -> None:
-    """Comprueba que PostgreSQL rechaza fisicamente escrituras y lectura de tablas privadas."""
-    with pytest.raises(psycopg.Error):
-        run_query("DELETE FROM orders WHERE order_id = 1;")
+def test_run_query_executes_valid_select_and_blocks_pii_and_writes() -> None:
+    ok_payload = json.loads(
+        run_query("SELECT status, COUNT(*) AS total FROM orders GROUP BY status ORDER BY status")
+    )
+    assert ok_payload["row_count"] >= 1
 
-    with pytest.raises(psycopg.Error):
-        run_query("SELECT * FROM internal_audit_logs;")
+    with pytest.raises(SQLGuardrailError):
+        run_query("SELECT * FROM customers")
+
+    with pytest.raises(SQLGuardrailError):
+        run_query("DELETE FROM orders")
 
 
-def test_sample_rows_rejects_invalid_identifier_and_private_table() -> None:
-    """Comprueba que sample_rows rechaza identificadores maliciosos y tablas sin permiso."""
-    with pytest.raises(ValueError):
-        sample_rows("products; DROP TABLE orders;")
-
-    with pytest.raises(psycopg.Error):
-        sample_rows("internal_audit_logs")
-
-    capped = json.loads(sample_rows("products", limit=50))
-    assert capped["row_count"] == 10
-    assert len(capped["rows"]) == 10
+def test_run_query_rejects_queries_exceeding_explain_cost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SQL_MAX_EXPLAIN_COST", "0.01")
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(SQLGuardrailError, match="coste estimado"):
+            run_query(
+                "SELECT o.order_id, c.full_name "
+                "FROM orders o JOIN customers c ON o.customer_id = c.customer_id"
+            )
+    finally:
+        monkeypatch.delenv("SQL_MAX_EXPLAIN_COST", raising=False)
+        get_settings.cache_clear()

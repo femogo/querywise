@@ -12,6 +12,12 @@ from psycopg import sql as pg_sql
 from psycopg.rows import dict_row
 
 from querywise.config import get_settings
+from querywise.security.sql_guardrail import (
+    ALLOWED_TABLES,
+    BLOCKED_COLUMNS,
+    SQLGuardrailError,
+    validate_and_rewrite_sql,
+)
 
 mcp = MCPServer("querywise-readonly-postgres")
 
@@ -28,10 +34,12 @@ def _serialize_value(value: Any) -> Any:
 
 
 def _validate_identifier(name: str) -> str:
-    """Valida que un nombre de tabla sea un identificador SQL seguro."""
+    """Valida que un nombre de tabla sea un identificador SQL seguro y permitido."""
     cleaned = name.strip()
     if not _IDENTIFIER_RE.match(cleaned):
         raise ValueError(f"Identificador SQL no valido: {name!r}")
+    if cleaned.lower() not in ALLOWED_TABLES:
+        raise ValueError(f"Tabla no permitida: {cleaned!r}")
     return cleaned
 
 
@@ -49,6 +57,28 @@ def _get_readonly_connection() -> psycopg.Connection[dict[str, Any]]:
     return conn
 
 
+def _check_explain_cost(
+    cur: psycopg.Cursor[dict[str, Any]], safe_sql: str, max_cost: float
+) -> float:
+    """Ejecuta EXPLAIN (FORMAT JSON) y verifica que el coste total no supere el umbral."""
+    cur.execute(f"EXPLAIN (FORMAT JSON) {safe_sql}")
+    row = cur.fetchone()
+    if not row or "QUERY PLAN" not in row:
+        raise SQLGuardrailError("No se pudo obtener el plan de ejecucion EXPLAIN.")
+
+    plan_payload = row["QUERY PLAN"]
+    if isinstance(plan_payload, str):
+        plan_payload = json.loads(plan_payload)
+
+    total_cost = float(plan_payload[0]["Plan"]["Total Cost"])
+    if total_cost > max_cost:
+        raise SQLGuardrailError(
+            f"El coste estimado de la consulta ({total_cost:.2f}) supera el maximo permitido "
+            f"({max_cost:.2f})."
+        )
+    return total_cost
+
+
 @mcp.tool()
 def list_tables() -> str:
     """Lista las tablas de negocio visibles para el rol de solo lectura en el esquema public."""
@@ -64,7 +94,11 @@ def list_tables() -> str:
     with _get_readonly_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query)
-            tables = [row["table_name"] for row in cur.fetchall()]
+            tables = [
+                row["table_name"]
+                for row in cur.fetchall()
+                if row["table_name"].lower() in ALLOWED_TABLES
+            ]
     return json.dumps({"tables": tables}, ensure_ascii=False)
 
 
@@ -94,12 +128,31 @@ def describe_table(table_name: str) -> str:
 
 @mcp.tool()
 def sample_rows(table_name: str, limit: int = 5) -> str:
-    """Devuelve una muestra acotada de filas (entre 1 y 10) de una tabla permitida."""
+    """Devuelve una muestra acotada de filas (entre 1 y 10) excluyendo columnas PII."""
     safe_table = _validate_identifier(table_name)
     safe_limit = max(1, min(int(limit), 10))
-    stmt = pg_sql.SQL("SELECT * FROM {} LIMIT %s;").format(pg_sql.Identifier(safe_table))
+    col_query = """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = %s
+        ORDER BY ordinal_position;
+    """
     with _get_readonly_connection() as conn:
         with conn.cursor() as cur:
+            cur.execute(col_query, (safe_table,))
+            safe_cols = [
+                row["column_name"]
+                for row in cur.fetchall()
+                if row["column_name"].lower() not in BLOCKED_COLUMNS
+            ]
+            if not safe_cols:
+                raise ValueError(f"No hay columnas seguras disponibles en {safe_table}")
+
+            cols_ident = pg_sql.SQL(", ").join(pg_sql.Identifier(c) for c in safe_cols)
+            stmt = pg_sql.SQL("SELECT {} FROM {} LIMIT %s;").format(
+                cols_ident, pg_sql.Identifier(safe_table)
+            )
             cur.execute(stmt, (safe_limit,))
             rows = [{k: _serialize_value(v) for k, v in row.items()} for row in cur.fetchall()]
     return json.dumps(
@@ -109,15 +162,14 @@ def sample_rows(table_name: str, limit: int = 5) -> str:
 
 @mcp.tool()
 def run_query(sql: str) -> str:
-    """Ejecuta una consulta SELECT de solo lectura y devuelve los resultados en JSON."""
+    """Valida el AST, verifica el coste EXPLAIN y ejecuta una consulta SELECT segura."""
     settings = get_settings()
-    cleaned_sql = sql.strip()
-    if not cleaned_sql:
-        raise ValueError("La consulta SQL no puede estar vacia.")
+    safe_sql = validate_and_rewrite_sql(sql, max_rows=settings.sql_max_rows)
 
     with _get_readonly_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(cleaned_sql)
+            _check_explain_cost(cur, safe_sql, settings.sql_max_explain_cost)
+            cur.execute(safe_sql)
             if cur.description is None:
                 return json.dumps({"columns": [], "rows": [], "row_count": 0, "truncated": False})
             columns = [desc.name for desc in cur.description]
