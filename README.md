@@ -1,14 +1,17 @@
-# querywise
+﻿# querywise
 
-Agente Text-to-SQL construido con **LangGraph**, **Model Context Protocol (MCP)** y **PostgreSQL**, diseñado con arquitectura **local-first** (Ollama) y **defensa en profundidad**.
+Agente Text-to-SQL construido con **LangGraph**, **Model Context Protocol (MCP)**, **FastAPI** y **PostgreSQL**, diseñado con arquitectura **local-first** (Ollama `gemma4:e2b`) y **defensa en profundidad**.
 
 ## Arquitectura de seguridad (4 capas)
 1. **Aislamiento mediante MCP (stdio):** El agente no posee drivers ni credenciales directas de base de datos; invoca herramientas expuestas por un servidor MCP aislado de solo lectura.
-2. **Validacion sintactica AST (sqlglot):** Analisis estatico del arbol sintactico para permitir unicamente consultas SELECT de una sola sentencia, bloquear catalogos del sistema y columnas sensibles (PII), e inyectar LIMIT obligatorio.
-3. **Minimo privilegio en PostgreSQL:** Conexion mediante un rol dedicado (querywise_ro) con permisos exclusivos de lectura sobre tablas de negocio autorizadas.
-4. **Limites de recursos:** Validacion previa de coste con EXPLAIN y control de tiempo mediante statement_timeout.
+2. **Validación sintáctica AST (sqlglot):** Análisis estático para permitir únicamente consultas `SELECT` de una sola sentencia, bloquear catálogos del sistema y columnas PII (`tax_id`, `password_hash`, `secret_token_ref`), e inyectar `LIMIT` obligatorio.
+3. **Mínimo privilegio en PostgreSQL:** Rol dedicado `querywise_ro` con acceso exclusivo a las 6 tablas de negocio autorizadas.
+4. **Límites de recursos:** Validación previa con `EXPLAIN (FORMAT JSON)` y `statement_timeout`.
 
-## Ejecucion rapida
-- Instalar dependencias: uv sync
-- Ejecutar tests: uv run pytest -v
-- Ejecutar linter: uv run ruff check .
+## Ejecución rápida
+- Instalar dependencias: `uv sync`
+- Ejecutar tests (42/42): `uv run pytest -v`
+- Ejecutar linter: `uv run ruff check .`
+- Consulta CLI: `uv run python -m querywise.api --question "¿Cuáles son los 3 productos más vendidos por ingresos netos?"`
+- Servidor FastAPI: `uv run python -m querywise.api --serve --host 127.0.0.1 --port 8000`
+- Benchmark automático: `uv run python -m querywise.eval.runner --suite all`
